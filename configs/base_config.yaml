@@ -1,0 +1,128 @@
+# QTFinance Base Configuration
+# Markov-Switching Regime Trading System
+
+regime_detection:
+  n_regimes: 3  # Number of market regimes (3 = bull/neutral/bear)
+  model_type: hmm  # Primary model: 'hmm' or 'markov'
+  covariance_type: full  # HMM covariance: 'full', 'diag', 'tied', 'spherical'
+  n_iter: 100  # Maximum iterations for model fitting
+  min_regime_duration: 5  # Minimum days for regime persistence
+  probability_threshold: 0.7  # Minimum probability for regime confirmation
+  smoothing_window: 3  # Window for probability smoothing
+  
+  features:
+    groups:  # Feature groups to calculate
+      - price
+      - statistical
+      - regime
+      - technical
+    
+    lookback_periods:
+      returns: 1
+      volatility_short: 20
+      volatility_long: 60
+      volume: 20
+      correlation: 60
+      skew: 20
+      kurtosis: 20
+
+data:
+  provider: yfinance
+  start_date: "2010-01-01"
+  end_date: null  # null means today
+  symbols:
+    - SPY  # Add more symbols or use 'SP500' for all constituents
+  interval: 1d  # 1m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo
+  cache_dir: data/cache
+
+strategies:
+  momentum:
+    lookback: 20  # Days for momentum calculation
+    holding_period: 5  # Days to hold positions
+    n_stocks: 10  # Number of stocks in portfolio
+    rebalance_frequency: weekly
+    min_volume: 1000000  # Minimum daily volume
+    
+  mean_reversion:
+    lookback: 20
+    entry_threshold: -2.0  # Z-score for entry
+    exit_threshold: 0.0  # Z-score for exit
+    stop_loss: -3.0  # Z-score for stop loss
+    max_holding_period: 10
+    
+  pairs_trading:
+    lookback: 60
+    entry_threshold: 2.0  # Standard deviations
+    exit_threshold: 0.5
+    max_half_life: 20  # Maximum half-life for mean reversion
+    min_correlation: 0.7
+
+risk:
+  max_drawdown: 0.20  # 20% maximum drawdown
+  position_size: 0.02  # 2% per position
+  max_positions: 10
+  portfolio_heat: 0.06  # 6% portfolio VaR limit
+  use_stops: true
+  stop_loss: 0.02  # 2% stop loss per position
+  
+  regime_scaling:  # Position size multipliers by regime
+    bull: 1.0
+    neutral: 0.6
+    bear: 0.3
+
+backtest:
+  initial_capital: 100000
+  commission: 0.001  # 10 basis points
+  slippage: 0.0005  # 5 basis points
+  annual_risk_free_rate: 0.02
+  
+  walk_forward:
+    enabled: true
+    train_period: 252  # 1 year of trading days
+    test_period: 63   # 3 months
+    step_size: 21     # 1 month
+
+reporting:
+  output_dir: reports
+  save_plots: true
+  plot_dpi: 300
+  generate_pdf: true
+  generate_excel: true
+  
+  metrics:
+    - total_return
+    - cagr
+    - sharpe_ratio
+    - sortino_ratio
+    - max_drawdown
+    - calmar_ratio
+    - win_rate
+    - profit_factor
+
+live_trading:
+  enabled: false
+  paper_trading: true
+  broker: alpaca
+  api_key: null  # Set via environment variable: QTF_LIVE_TRADING__API_KEY
+  api_secret: null  # Set via environment variable: QTF_LIVE_TRADING__API_SECRET
+  base_url: https://paper-api.alpaca.markets
+  
+  order_settings:
+    order_type: limit
+    time_in_force: day
+    extended_hours: false
+
+monitoring:
+  metrics_port: 8000
+  log_level: INFO
+  log_file: logs/qtfinance.log
+  
+  alert_email: null  # Set to enable email alerts
+  alert_thresholds:
+    drawdown: 0.15  # Alert at 15% drawdown
+    daily_loss: 0.05  # Alert on 5% daily loss
+    regime_changes: 3  # Alert if >3 regime changes per day
+    
+  prometheus:
+    enabled: true
+    pushgateway_url: null  # Optional Prometheus pushgateway
